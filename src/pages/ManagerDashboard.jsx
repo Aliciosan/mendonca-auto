@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useAuto } from '../context/AutoContext';
 import { useNavigate } from 'react-router-dom';
-import { Shield, LogOut, Plus, UserPlus, FileText, Trash, CloudUpload, Calendar } from 'lucide-react';
+import { Shield, LogOut, Plus, UserPlus, FileText, Trash, CloudUpload, Calendar, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import CarCard from '../components/CarCard';
 import Modal from '../components/Modal';
 
-// Link do som de notificação (opcional)
+// Som de notificação
 const notificationSound = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"; 
 
 export default function ManagerDashboard() {
   const { 
-    cars, clients, sales, appointments, 
+    cars, clients, sales, appointments, notifications = [], // Garante array vazio se undefined
     addCar, updateCar, deleteCar, markSold, 
     registerClient, deleteClient, deleteAppointment, 
+    clearNotifications, markNotificationsAsRead, 
     resetAll, logout 
   } = useAuto();
   
@@ -22,16 +23,21 @@ export default function ManagerDashboard() {
   const [carForm, setCarForm] = useState({ id: null, brand: '', model: '', year: '', price: '', color: '', km: '', image: null });
   const [clientForm, setClientForm] = useState({ name: '', cpf: '', email: '', phone: '' });
 
-  // Ouvinte de Novos Agendamentos (Toca som e abre alerta)
+  // Conta notificações não lidas
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  // OUVINTE DE SOM DE NOTIFICAÇÃO
   useEffect(() => {
     const channel = new BroadcastChannel('mendonca_channel');
     channel.onmessage = (event) => {
       if (event.data.type === 'NEW_APPOINTMENT_ALERT') {
+        // Toca o som
         const audio = new Audio(notificationSound);
-        audio.play().catch(e => console.log("Som bloqueado pelo navegador:", e));
+        audio.play().catch(e => console.log("Som bloqueado:", e));
         
+        // Mostra o Toast
         toast.message('🔔 Novo Agendamento!', {
-          description: `Cliente ${event.data.data.clientName} acabou de agendar.`,
+          description: `Cliente ${event.data.data.clientName} agendou visita.`,
           duration: 5000,
           action: { label: 'Ver Agenda', onClick: () => setActiveModal('agenda') },
         });
@@ -41,6 +47,8 @@ export default function ManagerDashboard() {
   }, []);
 
   const handleLogout = () => { logout(); navigate('/'); };
+  
+  const openNotifications = () => { setActiveModal('notifications'); markNotificationsAsRead(); };
   
   const openCarModal = (car = null) => {
     setCarForm(car || { id: null, brand: '', model: '', year: '', price: '', color: '', km: '', image: null });
@@ -79,7 +87,15 @@ export default function ManagerDashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '800', textTransform: 'uppercase' }}>
             <Shield color="#d4af37" /> Área Administrativa
           </div>
-          <button className="btn btn-outline" onClick={handleLogout}><LogOut size={16}/> Sair</button>
+          
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            {/* BOTÃO SININHO */}
+            <button onClick={openNotifications} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '5px' }}>
+              <Bell size={24} color="#64748b" />
+              {unreadCount > 0 && <span style={{ position: 'absolute', top: 0, right: 0, background: '#ef4444', color: 'white', fontSize: '0.7rem', fontWeight: 'bold', width: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</span>}
+            </button>
+            <button className="btn btn-outline" onClick={handleLogout}><LogOut size={16}/> Sair</button>
+          </div>
         </div>
       </header>
 
@@ -87,13 +103,10 @@ export default function ManagerDashboard() {
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '30px' }}>
           <button className="btn btn-primary" onClick={() => openCarModal()}><Plus size={18}/> Veículo</button>
           <button className="btn btn-outline" onClick={() => setActiveModal('client')}><UserPlus size={18}/> Cliente</button>
-          
-          {/* BOTÃO DA AGENDA */}
           <button className="btn btn-outline" onClick={() => setActiveModal('agenda')}>
             <Calendar size={18} color={appointments?.length > 0 ? '#d4af37' : 'currentColor'} /> 
             Agenda {appointments?.length > 0 && `(${appointments.length})`}
           </button>
-
           <button className="btn btn-outline" onClick={() => setActiveModal('history')}><FileText size={18}/> Vendas</button>
           <button className="btn btn-danger" onClick={resetAll} style={{ marginLeft: 'auto' }}><Trash size={18}/> Reset</button>
         </div>
@@ -117,7 +130,8 @@ export default function ManagerDashboard() {
       </div>
 
       {/* --- MODAIS --- */}
-      {/* 1. AGENDA DE VISITAS */}
+      
+      {/* 1. AGENDA */}
       {activeModal === 'agenda' && (
         <Modal title="Agenda de Visitas" onClose={() => setActiveModal(null)}>
           <div className="table-wrapper" style={{ marginTop: 0 }}>
@@ -143,9 +157,31 @@ export default function ManagerDashboard() {
         </Modal>
       )}
 
+      {/* 2. NOTIFICAÇÕES */}
+      {activeModal === 'notifications' && (
+        <Modal title="Notificações" onClose={() => setActiveModal(null)}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}><button className="btn btn-outline" onClick={clearNotifications}>Limpar</button></div>
+          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            {notifications.length === 0 ? <p style={{textAlign: 'center', color: '#94a3b8'}}>Nenhuma notificação.</p> : notifications.map(n => (
+              <div key={n.id} style={{ padding: '15px', borderRadius: '8px', marginBottom: '10px', background: n.type === 'alert' ? '#fff7ed' : '#f8fafc', borderLeft: `4px solid ${n.type === 'alert' ? '#f59e0b' : '#3b82f6'}` }}>
+                <p style={{ fontWeight: '500', color: '#334155' }}>{n.text}</p><small style={{ color: '#94a3b8' }}>{n.date}</small>
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* Outros modais mantidos padrão (Carro, Cliente, Histórico) */}
       {activeModal === 'car' && (
         <Modal title={carForm.id ? "Editar" : "Cadastrar"} onClose={() => setActiveModal(null)}>
           <form onSubmit={handleCarSubmit}>
+            <div 
+              style={{ width: '100%', height: '200px', border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', cursor: 'pointer', background: '#f8fafc', overflow: 'hidden' }}
+              onClick={() => document.getElementById('file-upload').click()}
+            >
+              {carForm.image ? <img src={carForm.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ textAlign: 'center', color: '#94a3b8' }}><CloudUpload size={30} color="#d4af37" /><br/>Foto</div>}
+            </div>
+            <input type="file" id="file-upload" style={{ display: 'none' }} accept="image/*" onChange={handleImageUpload} />
             <div className="form-row"><div className="form-group"><label>Marca</label><input required value={carForm.brand} onChange={e => setCarForm({...carForm, brand: e.target.value})}/></div><div className="form-group"><label>Modelo</label><input required value={carForm.model} onChange={e => setCarForm({...carForm, model: e.target.value})}/></div></div>
             <div className="form-row"><div className="form-group"><label>Ano</label><input required value={carForm.year} onChange={e => setCarForm({...carForm, year: e.target.value})}/></div><div className="form-group"><label>Preço</label><input required value={carForm.price} onChange={e => setCarForm({...carForm, price: e.target.value})}/></div></div>
             <div className="form-row"><div className="form-group"><label>Cor</label><input required value={carForm.color} onChange={e => setCarForm({...carForm, color: e.target.value})}/></div><div className="form-group"><label>Km</label><input required value={carForm.km} onChange={e => setCarForm({...carForm, km: e.target.value})}/></div></div>
