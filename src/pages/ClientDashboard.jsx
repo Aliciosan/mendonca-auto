@@ -16,8 +16,6 @@ export default function ClientDashboard() {
 
   const [selectedCar, setSelectedCar] = useState(null);
   const [scheduleData, setScheduleData] = useState({ date: '', time: '' });
-  
-  // Simulador
   const [entryValue, setEntryValue] = useState('');
   const [installments, setInstallments] = useState(48);
 
@@ -45,7 +43,6 @@ export default function ClientDashboard() {
       return;
     }
     
-    // ENVIA PARA O SUPABASE E ALERTA O GERENTE
     addAppointment({
       id: Date.now(),
       clientName: user?.name || 'Cliente Site',
@@ -76,7 +73,6 @@ export default function ClientDashboard() {
   const filteredCars = cars.filter(car => {
     if (car.status !== 'disponivel') return false;
     if (showOnlyFavs && !favorites.includes(car.id)) return false;
-    
     const matchBrand = car.brand.toLowerCase().includes(searchBrand.toLowerCase());
     const matchModel = car.model.toLowerCase().includes(searchModel.toLowerCase());
     const matchPrice = !maxPrice || car.price <= Number(maxPrice);
@@ -86,31 +82,31 @@ export default function ClientDashboard() {
   return (
     <div>
       <header style={{ background: 'white', padding: '15px 0', borderBottom: '2px solid #d4af37', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div className="container header-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* RESPONSIVIDADE: Header quebra linha suavemente */}
+        <div className="container header-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '800', fontSize: '1.1rem' }}>
             <Car color="#d4af37" /> MENDONÇA AUTO PRIME
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '5px' }}>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontWeight: '700' }}>Olá, {user?.name?.split(' ')[0]}</div>
             </div>
-            <button className="btn btn-outline" onClick={handleLogout}><LogOut size={16}/></button>
+            <button className="btn btn-outline" style={{ padding: '8px 12px' }} onClick={handleLogout}><LogOut size={16}/></button>
           </div>
         </div>
       </header>
 
       <div className="container" style={{ paddingTop: '30px' }}>
         <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          {/* RESPONSIVIDADE: Filtros empilham no mobile */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
             <input placeholder="Marca..." value={searchBrand} onChange={e => setSearchBrand(e.target.value)} style={{ margin: 0 }} />
             <input placeholder="Modelo..." value={searchModel} onChange={e => setSearchModel(e.target.value)} style={{ margin: 0 }} />
             <input type="number" placeholder="Preço Máx..." value={maxPrice} onChange={e => setMaxPrice(e.target.value)} style={{ margin: 0 }} />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button className={`btn ${showOnlyFavs ? 'btn-danger' : 'btn-outline'}`} onClick={() => setShowOnlyFavs(!showOnlyFavs)} style={{ width: '100%' }}>
-              <Heart size={18} fill={showOnlyFavs ? 'white' : 'none'}/> {showOnlyFavs ? 'Ver Todos' : 'Ver Apenas Favoritos'}
-            </button>
-          </div>
+          <button className={`btn ${showOnlyFavs ? 'btn-danger' : 'btn-outline'}`} onClick={() => setShowOnlyFavs(!showOnlyFavs)} style={{ width: '100%' }}>
+            <Heart size={18} fill={showOnlyFavs ? 'white' : 'none'}/> {showOnlyFavs ? 'Ver Todos' : 'Ver Apenas Favoritos'}
+          </button>
         </div>
 
         <h3 style={{ marginTop: '30px', marginBottom: '20px' }}>{showOnlyFavs ? 'Meus Favoritos' : 'Veículos Disponíveis'}</h3>
